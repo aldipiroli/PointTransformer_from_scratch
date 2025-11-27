@@ -1,8 +1,8 @@
 import argparse
 
 from point_transformer.dataset.template_dataset import TemplateDataset
-from point_transformer.model.model import TemplateModel
 from point_transformer.model.loss import TemplateLoss
+from point_transformer.model.model import TemplateModel
 from point_transformer.utils.misc import get_logger, load_config, make_artifacts_dirs
 from point_transformer.utils.trainer import Trainer
 

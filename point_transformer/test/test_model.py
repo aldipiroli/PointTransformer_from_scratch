@@ -17,6 +17,7 @@ def test_model():
     out = model(img)
     assert out[0].shape != None
 
+
 def run_training_step(model, preds, y):
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     model.train()
@@ -25,6 +26,7 @@ def run_training_step(model, preds, y):
     optimizer.step()
     for p in model.parameters():
         assert p.grad is not None
+
 
 if __name__ == "__main__":
     print("All tests passed!")

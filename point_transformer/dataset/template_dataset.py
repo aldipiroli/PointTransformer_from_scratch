@@ -1,8 +1,6 @@
 from pathlib import Path
+
 import torchvision.transforms as transforms
-import torchvision.transforms as T
-import torchvision.transforms.functional as F
-from PIL import Image
 from torch.utils.data import Dataset
 
 
