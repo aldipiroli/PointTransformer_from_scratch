@@ -1,13 +1,13 @@
 import torch
 import torch.nn as nn
 
-from point_transformer.utils.operations import find_kNN
+from point_transformer.utils.operations import find_kNN, sample_down
 
 
 class ProjectionBlock(nn.Module):
-    def __init__(self, dm, d):
+    def __init__(self, din, dout):
         super().__init__()
-        self.proj = nn.Sequential(nn.Linear(dm, d), nn.ReLU(), nn.Linear(d, d))
+        self.proj = nn.Sequential(nn.Linear(din, dout), nn.ReLU(), nn.Linear(dout, dout))
 
     def forward(self, x):
         out = self.proj(x)
@@ -39,17 +39,16 @@ class PointTransformer(nn.Module):
 
 
 class PointTransformerBlock(nn.Module):
-    def __init__(self, dm, d, k):
+    def __init__(self, d, k):
         super().__init__()
         self.k = k
-        self.lin1 = ProjectionBlock(dm, d)
+        self.lin1 = ProjectionBlock(d, d)
         self.point_transformer = PointTransformer(d)
         self.lin2 = ProjectionBlock(d, d)
 
-    def forward(self, x, p):
+    def forward(self, x, p, idx):
         x_lin1 = self.lin1(x)
 
-        idx = find_kNN(x, self.k)
         batch_ids = torch.arange(x.shape[0])[:, None, None]  # B,1,1
         xn_lin1 = x_lin1[batch_ids, idx]  # B,N,K,C
         pn = p[batch_ids, idx]  # B,N,K,C
@@ -58,3 +57,28 @@ class PointTransformerBlock(nn.Module):
         x_lin2 = self.lin2(x_pt)
         x = x_lin2 + x
         return x  # B,N,C
+
+
+class TransitionDownModule(nn.Module):
+    def __init__(self, k, d):
+        super().__init__()
+        self.k = k
+        self.projection = nn.Sequential(nn.Linear(d, d), nn.BatchNorm1d(d), nn.ReLU())
+
+    def forward(self, x, p, n2):
+        n2_idx = sample_down(p, n2)
+        idx = find_kNN(x[:, n2_idx], x, self.k)
+        batch_ids = torch.arange(x.shape[0])[:, None, None]  # B,1,1
+        x2 = x[batch_ids, idx]  # B,N,K,C
+        B, N2, K, C = x2.shape
+        x2 = self.projection(x2.reshape(B * N2 * K, C))
+        x2 = x2.reshape(B, N2, K, C)  # B,N,K,C
+        x2 = torch.max(x2, dim=2)[0]  # B,N,C
+        return x2
+
+
+class PointTransformerSemanticSegmentation(nn.Module):
+    def __init__(self, d_in, d, k):
+        super().__init__()
+        self.linear1 = nn.Linear(d_in, d)
+        self.pt1 = PointTransformer(d, d)

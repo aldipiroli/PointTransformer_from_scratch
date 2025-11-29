@@ -4,7 +4,8 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 import torch
 
-from point_transformer.model.model import PointTransformer, PointTransformerBlock
+from point_transformer.model.model import PointTransformer, PointTransformerBlock, TransitionDownModule
+from point_transformer.utils.operations import find_kNN
 
 
 def test_point_transformer():
@@ -18,7 +19,7 @@ def test_point_transformer():
     p = torch.randn(B, N, 3)
     p_n = torch.randn(B, N, K, 3)
 
-    vect_att = PointTransformer(dm=C, d=C)
+    vect_att = PointTransformer(d=C)
     out = vect_att(x, x_n, p, p_n)
     assert out.shape == (B, N, C)
     run_training_step(vect_att, out, x)
@@ -32,11 +33,26 @@ def test_point_transformer_block():
 
     x = torch.randn(B, N, C)
     p = torch.randn(B, N, 3)
+    idx = find_kNN(x, x, K)
 
-    pt_block = PointTransformerBlock(dm=C, d=C, k=K)
-    out = pt_block(x, p)
+    pt_block = PointTransformerBlock(d=C, k=K)
+    out = pt_block(x, p, idx)
     assert out.shape == x.shape
     run_training_step(pt_block, out, x)
+
+
+def test_transition_down_module():
+    B = 2
+    N = 64
+    N2 = N // 2
+    C = 4
+    K = 8
+
+    x = torch.randn(B, N, C)
+    p = torch.randn(B, N, 3)
+    tr_down = TransitionDownModule(K, C)
+    out = tr_down(x, p, N2)
+    assert out.shape == (B, N2, C)
 
 
 def run_training_step(model, preds, y):
@@ -51,5 +67,5 @@ def run_training_step(model, preds, y):
 
 
 if __name__ == "__main__":
-    test_point_transformer_block()
+    test_transition_down_module()
     print("All tests passed!")

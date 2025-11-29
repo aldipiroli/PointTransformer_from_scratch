@@ -8,7 +8,13 @@ def find_kNN_sklearn(x, k):
     return indices  # NxK
 
 
-def find_kNN(x, k):
-    dist = torch.cdist(x, x)
+def find_kNN(x1, x2, k):
+    dist = torch.cdist(x1, x2)
     distances, indicies = torch.topk(dist, k=k, dim=-1, largest=False, sorted=True)
     return indicies
+
+
+def sample_down(x, n, axis=1):
+    # TODO: use farthest-point sampling
+    idx = torch.randperm(x.shape[axis])[:n]
+    return idx

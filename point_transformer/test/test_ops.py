@@ -13,7 +13,7 @@ def test_find_kNN():
     N = 64
     K = 8
     x = torch.randn(B, N, 3)
-    indicies = find_kNN(x, k=K)
+    indicies = find_kNN(x, x, k=K)
     assert indicies.shape == (B, N, K)
 
 
@@ -22,7 +22,7 @@ def test_kNN_methods():
     N = 64
     K = 8
     x = torch.randn(B, N, 3)
-    indicies_torch = find_kNN(x, k=K)
+    indicies_torch = find_kNN(x, x, k=K)
 
     indicies_sklearn = []
     for i in range(B):
