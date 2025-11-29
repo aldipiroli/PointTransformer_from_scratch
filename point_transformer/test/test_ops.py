@@ -13,7 +13,7 @@ def test_find_kNN():
     N = 64
     K = 8
     x = torch.randn(B, N, 3)
-    indicies = find_kNN(x, x, k=K)
+    _, indicies = find_kNN(x, x, k=K)
     assert indicies.shape == (B, N, K)
 
 
@@ -22,7 +22,7 @@ def test_kNN_methods():
     N = 64
     K = 8
     x = torch.randn(B, N, 3)
-    indicies_torch = find_kNN(x, x, k=K)
+    _, indicies_torch = find_kNN(x, x, k=K)
 
     indicies_sklearn = []
     for i in range(B):
@@ -32,6 +32,17 @@ def test_kNN_methods():
     assert torch.equal(indicies_sklearn, indicies_torch)
 
 
+def test_trilinear_interp():
+    B = 2
+    N = 64
+    C = 4
+    K = 8
+    x = torch.randn(B, N, C)
+    p = torch.randn(B, N, 3)
+
+    dist, idx = find_kNN(p, p, K)
+
+
 if __name__ == "__main__":
-    test_kNN_methods()
+    test_trilinear_interp()
     print("All tests passed!")

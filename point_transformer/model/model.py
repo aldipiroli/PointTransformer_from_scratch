@@ -63,11 +63,11 @@ class TransitionDownModule(nn.Module):
     def __init__(self, k, d):
         super().__init__()
         self.k = k
-        self.projection = nn.Sequential(nn.Linear(d, d), nn.BatchNorm1d(d), nn.ReLU())
+        self.projection = nn.Sequential(nn.Linear(d, d), nn.BatchNorm1d(d), nn.ReLU(), nn.Linear(d, d))
 
     def forward(self, x, p, n2):
         n2_idx = sample_down(p, n2)
-        idx = find_kNN(x[:, n2_idx], x, self.k)
+        _, idx = find_kNN(x[:, n2_idx], x, self.k)
         batch_ids = torch.arange(x.shape[0])[:, None, None]  # B,1,1
         x2 = x[batch_ids, idx]  # B,N,K,C
         B, N2, K, C = x2.shape
@@ -75,6 +75,20 @@ class TransitionDownModule(nn.Module):
         x2 = x2.reshape(B, N2, K, C)  # B,N,K,C
         x2 = torch.max(x2, dim=2)[0]  # B,N,C
         return x2
+
+
+class TransitionUpModule(nn.Module):
+    def __init__(self, k, d):
+        super().__init__()
+        self.k = k
+        self.projection = nn.Sequential(nn.Linear(d, d), nn.BatchNorm1d(d), nn.ReLU(), nn.Linear(d, d))
+
+    def forward(self, x, p, n1):
+        B, N2, C = x.shape
+        x = self.projection(x.reshape(B * N2, C))
+        x = x.reshape(B, N2, C)
+
+        return x
 
 
 class PointTransformerSemanticSegmentation(nn.Module):
