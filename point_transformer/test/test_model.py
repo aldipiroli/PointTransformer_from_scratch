@@ -4,24 +4,31 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 import torch
 
-from point_transformer.model.model import TemplateModel
-from point_transformer.utils.misc import load_config
+from point_transformer.model.model import VectorAttention
 
 
-def test_model():
-    config = load_config("point_transformer/config/config.yaml")
-    model = TemplateModel(config)
-    img_size = config["DATA"]["img_size"]
-    B, C, H, W = 2, 1, img_size[0], img_size[1]
-    img = torch.randn(B, C, H, W)
-    out = model(img)
-    assert out[0].shape != None
+def test_vector_attention():
+    B = 2
+    N = 64
+    C = 4
+    K = 8
+
+    x = torch.randn(B, N, C)
+    x_n = torch.randn(B, N, K, C)
+    p = torch.randn(B, N, 3)
+    p_n = torch.randn(B, N, K, 3)
+
+    vect_att = VectorAttention(dm=C, d=C)
+    out = vect_att(x, x_n, p, p_n)
+    assert out.shape == (B, N, C)
+    run_training_step(vect_att, out, x)
 
 
 def run_training_step(model, preds, y):
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     model.train()
     loss = torch.nn.functional.mse_loss(preds, y)
+    assert loss == loss
     loss.backward()
     optimizer.step()
     for p in model.parameters():
@@ -29,4 +36,5 @@ def run_training_step(model, preds, y):
 
 
 if __name__ == "__main__":
+    test_vector_attention()
     print("All tests passed!")
