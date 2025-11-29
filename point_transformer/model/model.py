@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from point_transformer.utils.operations import find_kNN, sample_down
+from point_transformer.utils.operations import feature_interpolation, find_kNN, sample_down
 
 
 class ProjectionBlock(nn.Module):
@@ -83,11 +83,11 @@ class TransitionUpModule(nn.Module):
         self.k = k
         self.projection = nn.Sequential(nn.Linear(d, d), nn.BatchNorm1d(d), nn.ReLU(), nn.Linear(d, d))
 
-    def forward(self, x, p, n1):
+    def forward(self, x, p, factor):
         B, N2, C = x.shape
         x = self.projection(x.reshape(B * N2, C))
         x = x.reshape(B, N2, C)
-
+        x = feature_interpolation(x, factor)
         return x
 
 

@@ -48,18 +48,18 @@ def test_point_transformer_block():
 
 def test_transition_down_module():
     B = 2
-    N2 = 32
-    N = N2 * 2
+    N = 64
+    N2 = 32 // 2
     C = 4
     K = 8
 
-    x = torch.randn(B, N2, C)
-    p = torch.randn(B, N2, 3)
-    tr_up = TransitionDownModule(K, C)
-    out = tr_up(x, p, N)
-    assert out.shape == (B, N, C)
-    x2 = torch.randn(B, N, C)
-    run_training_step(tr_up, out, x2)
+    x = torch.randn(B, N, C)
+    p = torch.randn(B, N, 3)
+    tr_down = TransitionDownModule(K, C)
+    out = tr_down(x, p, N2)
+    assert out.shape == (B, N2, C)
+    x2 = torch.randn(B, N2, C)
+    run_training_step(tr_down, out, x2)
 
 
 def test_transition_up_module():
@@ -69,13 +69,14 @@ def test_transition_up_module():
     C = 4
     K = 8
 
-    x = torch.randn(B, N, C)
-    p = torch.randn(B, N, 3)
-    tr_down = TransitionUpModule(K, C)
-    out = tr_down(x, p, N2)
-    assert out.shape == (B, N2, C)
-    x2 = torch.randn(B, N2, C)
-    run_training_step(tr_down, out, x2)
+    x = torch.randn(B, N2, C)
+    p = torch.randn(B, N2, 3)
+    tr_up = TransitionUpModule(K, C)
+    factor = 2
+    out = tr_up(x, p, factor)
+    assert out.shape == (B, N, C)
+    x2 = torch.randn(B, N, C)
+    run_training_step(tr_up, out, x2)
 
 
 def run_training_step(model, preds, y):
