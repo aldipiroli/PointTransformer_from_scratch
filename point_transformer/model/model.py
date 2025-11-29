@@ -1,4 +1,7 @@
+import torch
 import torch.nn as nn
+
+from point_transformer.utils.operations import find_kNN
 
 
 class ProjectionBlock(nn.Module):
@@ -11,20 +14,20 @@ class ProjectionBlock(nn.Module):
         return out
 
 
-class VectorAttention(nn.Module):
-    def __init__(self, dm, d):
+class PointTransformer(nn.Module):
+    def __init__(self, d):
         super().__init__()
-        self.q = ProjectionBlock(dm, d)
-        self.k = ProjectionBlock(dm, d)
-        self.v = ProjectionBlock(dm, d)
+        self.q = ProjectionBlock(d, d)
+        self.k = ProjectionBlock(d, d)
+        self.v = ProjectionBlock(d, d)
         self.pos_enc_tr = ProjectionBlock(3, d)
 
-    def forward(self, x, x_n, p, p_n):
+    def forward(self, x, xn, p, pn):
         Q = self.q(x).unsqueeze(2)  # B,N,1,C
-        K = self.k(x_n)  # B,N,K,C
-        V = self.v(x_n)  # B,N,K,C
+        K = self.k(xn)  # B,N,K,C
+        V = self.v(xn)  # B,N,K,C
 
-        pos_enc = p.unsqueeze(2) - p_n  # B,N,K,3
+        pos_enc = p.unsqueeze(2) - pn  # B,N,K,3
         pos_enc = self.pos_enc_tr(pos_enc)  # B,N,K,C
 
         attn = (Q - K) + pos_enc  # B,N,K,C
@@ -33,3 +36,25 @@ class VectorAttention(nn.Module):
         out = attn * (V + pos_enc)
         out = out.sum(2)  # B,N,C
         return out
+
+
+class PointTransformerBlock(nn.Module):
+    def __init__(self, dm, d, k):
+        super().__init__()
+        self.k = k
+        self.lin1 = ProjectionBlock(dm, d)
+        self.point_transformer = PointTransformer(d)
+        self.lin2 = ProjectionBlock(d, d)
+
+    def forward(self, x, p):
+        x_lin1 = self.lin1(x)
+
+        idx = find_kNN(x, self.k)
+        batch_ids = torch.arange(x.shape[0])[:, None, None]  # B,1,1
+        xn_lin1 = x_lin1[batch_ids, idx]  # B,N,K,C
+        pn = p[batch_ids, idx]  # B,N,K,C
+        x_pt = self.point_transformer(x_lin1, xn_lin1, p, pn)
+
+        x_lin2 = self.lin2(x_pt)
+        x = x_lin2 + x
+        return x  # B,N,C
