@@ -92,7 +92,7 @@ class Trainer(TrainerBase):
         accuracy, miou = self.metric_computer()
         self.write_float_to_tb(accuracy, name="val/accuracy", step=self.epoch)
         self.write_float_to_tb(miou, name="val/miou", step=self.epoch)
-        self.logger.info(f"Epoch: {self.epoch}, accuracy: {accuracy}, miou: {miou}")
+        self.logger.info(f"Epoch: {self.epoch}, val_loss: {val_loss},  accuracy: {accuracy}, miou: {miou}")
         pbar.close()
 
     def update_metrics(self, pred_labels, labels):

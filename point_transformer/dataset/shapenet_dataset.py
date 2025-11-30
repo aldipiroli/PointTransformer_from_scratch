@@ -71,6 +71,7 @@ class ShapeNetDataset(Dataset):
         segm_path = self.root_dir / Path(path)
         assert os.path.isfile(segm_path)
         segm = np.loadtxt(segm_path, dtype=int)
+        segm = segm - 1  # start from 0
         return segm
 
     def sample_points(self, pcl, segm):
