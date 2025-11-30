@@ -10,5 +10,5 @@ tensorboard
 requests
 h5py
 opencv-python
-sklearn
+scikit-learn
 torchmetrics
