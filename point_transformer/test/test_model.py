@@ -7,6 +7,7 @@ import torch
 from point_transformer.model.model import (
     PointTransformer,
     PointTransformerBlock,
+    PointTransformerClassification,
     PointTransformerSemanticSegmentation,
     TransitionDownModule,
     TransitionUpModule,
@@ -97,6 +98,22 @@ def test_point_transformer_semantic_segmentation():
     run_training_step(pt_semseg, out, x2)
 
 
+def test_point_transformer_classification():
+    B = 2
+    N = 2048
+    C = 4
+    K = 8
+    n_classes = 24
+
+    x = torch.randn(B, N, C)
+    p = torch.randn(B, N, 3)
+    pt_cls = PointTransformerClassification(d_in=C, d=32, k=K, n_classes=n_classes)
+    out = pt_cls(x, p)
+    assert out.shape == (B, n_classes)
+    x2 = torch.randn(B, n_classes)
+    run_training_step(pt_cls, out, x2)
+
+
 def run_training_step(model, preds, y):
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     model.train()
@@ -109,5 +126,4 @@ def run_training_step(model, preds, y):
 
 
 if __name__ == "__main__":
-    test_point_transformer_semantic_segmentation()
     print("All tests passed!")

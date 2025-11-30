@@ -136,7 +136,7 @@ class PointTransformerSemanticSegmentation(nn.Module):
         self.tr_up1 = TransitionUpModule(k, din=d * 2, dout=d)
         self.pt_up1 = PointTransformerBlock(d, k)
 
-        # Cls head
+        # Segm head
         self.linear_cls = nn.Linear(d, n_classes)
 
     def forward(self, x, p):
@@ -177,6 +177,57 @@ class PointTransformerSemanticSegmentation(nn.Module):
         xup1 += xin
         xup1 = self.pt_up1(xup1, pup1)
 
-        # Cls Head
+        # Segm Head
         out = self.linear_cls(xup1)
+        return out
+
+
+class PointTransformerClassification(nn.Module):
+    def __init__(self, d_in, d, k, n_classes):
+        super().__init__()
+        self.k = k
+
+        # Input
+        self.linear_in = nn.Linear(d_in, d)
+        self.pt_in = PointTransformerBlock(d, k)
+
+        # Transition Down
+        self.tr_down1 = TransitionDownModule(k, din=d, dout=d * 2)
+        self.pt_down1 = PointTransformerBlock(d * 2, k)
+
+        self.tr_down2 = TransitionDownModule(k, din=d * 2, dout=d * 4)
+        self.pt_down2 = PointTransformerBlock(d * 4, k)
+
+        self.tr_down3 = TransitionDownModule(k, din=d * 4, dout=d * 8)
+        self.pt_down3 = PointTransformerBlock(d * 8, k)
+
+        self.tr_down4 = TransitionDownModule(k, din=d * 8, dout=d * 16)
+        self.pt_down4 = PointTransformerBlock(d * 16, k)
+
+        # Cls head
+        self.linear_cls = nn.Linear(d * 16, n_classes)
+
+    def forward(self, x, p):
+        N = x.shape[1]
+        xin = self.linear_in(x)
+        xin = self.pt_in(xin, p)
+
+        # Down Path
+        xdown1, pdown1 = self.tr_down1(xin, p, N // 4)
+        xdown1 = self.pt_down1(xdown1, pdown1)
+
+        xdown2, pdown2 = self.tr_down2(xdown1, pdown1, N // 16)
+        xdown2 = self.pt_down2(xdown2, pdown2)
+
+        xdown3, pdown3 = self.tr_down3(xdown2, pdown2, N // 64)
+        xdown3 = self.pt_down3(xdown3, pdown3)
+
+        xdown4, pdown4 = self.tr_down4(xdown3, pdown3, N // 256)
+        xdown4 = self.pt_down4(xdown4, pdown4)
+
+        # Global AvgPooling
+        x_avg = torch.max(xdown4, 1)[0]
+
+        # Cls Head
+        out = self.linear_cls(x_avg)
         return out
