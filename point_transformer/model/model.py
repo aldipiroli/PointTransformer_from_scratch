@@ -47,7 +47,7 @@ class PointTransformerBlock(nn.Module):
         self.lin2 = ProjectionBlock(d, d)
 
     def forward(self, x, p):
-        _, idx = find_kNN(x, x, self.k)
+        _, idx = find_kNN(p, p, self.k)
         x_lin1 = self.lin1(x)
 
         batch_ids = torch.arange(x.shape[0])[:, None, None]  # B,1,1
@@ -70,7 +70,7 @@ class TransitionDownModule(nn.Module):
 
     def forward(self, x, p, n2):
         n2_idx = sample_down(p, n2)
-        _, idx = find_kNN(x[:, n2_idx], x, self.k)
+        _, idx = find_kNN(p[:, n2_idx], p, self.k)
         batch_ids = torch.arange(x.shape[0])[:, None, None]  # B,1,1
         x2 = x[batch_ids, idx]  # B,N2,K,C
         p2 = p[:, n2_idx]  # B,N2,C
