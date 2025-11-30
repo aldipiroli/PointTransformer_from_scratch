@@ -1,4 +1,5 @@
 import torch
+from torchmetrics import Accuracy, JaccardIndex
 from tqdm import tqdm
 
 from point_transformer.dataset.shapenet_dataset import ID_TO_CLASS
@@ -9,6 +10,12 @@ from point_transformer.utils.trainer_base import TrainerBase
 class Trainer(TrainerBase):
     def __init__(self, config, logger):
         super().__init__(config, logger)
+        self.init_metrics()
+
+    def init_metrics(self):
+        num_classes = self.config["MODEL"]["n_classes"]
+        self.metric_acc = Accuracy(task="multiclass", num_classes=num_classes).to(self.device)
+        self.metric_iou = JaccardIndex(task="multiclass", num_classes=num_classes).to(self.device)
 
     def train(self):
         self.logger.info("Started training..")
@@ -48,11 +55,9 @@ class Trainer(TrainerBase):
     @torch.no_grad()
     def evaluate_model(self, save_plots=False):
         self.model.eval()
-        n_classes = self.config["MODEL"]["n_classes"]
-
-        total_intersection = torch.zeros(n_classes, device=self.device)
-        total_union = torch.zeros(n_classes, device=self.device)
-        val_loss = []
+        self.metric_acc.reset()
+        self.metric_iou.reset()
+        losses = []
 
         pbar = tqdm(enumerate(self.val_loader), total=len(self.val_loader))
         for n_iter, (pcl, labels) in pbar:
@@ -62,20 +67,16 @@ class Trainer(TrainerBase):
             labels = labels.to(self.device)
 
             preds = self.model(pcl, pcl)
-            # Compute IoU components
             pred_labels = self.post_processor(preds)
-            total_intersection, total_union = self.compute_interection_union(
-                pred_labels, labels, total_intersection, total_union, n_classes
-            )
+            self.update_metrics(pred_labels, labels)
+
+            loss, loss_dict = self.loss_fn(preds, labels)
+            losses.append(loss.item())
+            self.write_dict_to_tb(loss_dict, self.total_iters_val, prefix="val")
+            self.total_iters_val += 1
 
             if n_iter < self.config["OPTIM"]["max_num_plots"]:
                 self.plot_preds(pcl, preds, labels, iter=n_iter)
-
-            # Compute loss
-            loss, loss_dict = self.loss_fn(preds, labels)
-            val_loss.append(loss)
-            self.write_dict_to_tb(loss_dict, self.total_iters_val, prefix="val")
-            self.total_iters_val += 1
 
             pbar.set_postfix(
                 {
@@ -84,10 +85,28 @@ class Trainer(TrainerBase):
                     "loss": loss.item(),
                 }
             )
-        miou = self.compute_miou(total_union, total_intersection, n_classes)
+
+        val_loss = torch.mean(torch.tensor(losses)).item()
+        self.write_float_to_tb(val_loss, name="val/val_loss", step=self.epoch)
+
+        accuracy, miou = self.metric_computer()
+        self.write_float_to_tb(accuracy, name="val/accuracy", step=self.epoch)
         self.write_float_to_tb(miou, name="val/miou", step=self.epoch)
-        self.write_float_to_tb(torch.mean(torch.tensor(val_loss)).item(), name="val/avg_loss", step=self.epoch)
+        self.logger.info(f"Epoch: {self.epoch}, accuracy: {accuracy}, miou: {miou}")
         pbar.close()
+
+    def update_metrics(self, pred_labels, labels):
+        self.metric_acc.update(pred_labels, labels)
+        if self.config["MODEL"]["type"] == "segmentation":
+            self.metric_iou.update(pred_labels, labels)
+
+    def metric_computer(self):
+        accuracy = self.metric_acc.compute().item()
+        if self.config["MODEL"]["type"] == "segmentation":
+            miou = self.metric_iou.compute().item()
+        else:
+            miou = -1
+        return accuracy, miou
 
     def compute_interection_union(self, pred_labels, labels, total_intersection, total_union, n_classes):
         for cls in range(n_classes):
@@ -97,16 +116,6 @@ class Trainer(TrainerBase):
             total_union[cls] += (pred_mask | label_mask).sum()
         return total_intersection, total_union
 
-    def compute_miou(self, total_union, total_intersection, n_classes):
-        ious = torch.zeros(n_classes)
-        for cls in range(n_classes):
-            if total_union[cls] == 0:
-                ious[cls] = float("nan")
-            else:
-                ious[cls] = total_intersection[cls] / total_union[cls]
-        miou = torch.nanmean(ious).item()
-        return miou
-
     def post_processor(self, out):
         out = torch.softmax(out, -1)
         pred_out = torch.argmax(out, -1)
@@ -114,6 +123,9 @@ class Trainer(TrainerBase):
 
     def plot_preds(self, pcl, out, labels, iter=0, batch_id=0):
         preds = self.post_processor(out)
-        title = f"{ID_TO_CLASS[preds[batch_id].item()]}/{ID_TO_CLASS[labels[batch_id].item()]} - {preds[batch_id].item() == labels[batch_id].item()}"
+        if self.config["MODEL"]["type"] == "classification":
+            title = f"{ID_TO_CLASS[preds[batch_id].item()]}/{ID_TO_CLASS[labels[batch_id].item()]} - {preds[batch_id].item() == labels[batch_id].item()}"
+        else:
+            title = None
         img = plot_point_clouds([pcl], return_figure=True, title=title)
         self.write_images_to_tb(img, self.epoch, f"img/{str(iter).zfill(4)}")
