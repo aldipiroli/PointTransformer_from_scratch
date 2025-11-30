@@ -7,10 +7,10 @@ import torch
 from point_transformer.model.model import (
     PointTransformer,
     PointTransformerBlock,
+    PointTransformerSemanticSegmentation,
     TransitionDownModule,
     TransitionUpModule,
 )
-from point_transformer.utils.operations import find_kNN
 
 
 def test_point_transformer():
@@ -38,10 +38,9 @@ def test_point_transformer_block():
 
     x = torch.randn(B, N, C)
     p = torch.randn(B, N, 3)
-    _, idx = find_kNN(x, x, K)
 
     pt_block = PointTransformerBlock(d=C, k=K)
-    out = pt_block(x, p, idx)
+    out = pt_block(x, p)
     assert out.shape == x.shape
     run_training_step(pt_block, out, x)
 
@@ -50,16 +49,18 @@ def test_transition_down_module():
     B = 2
     N = 64
     N2 = 32 // 2
-    C = 4
+    C1 = 4
+    C2 = 8
     K = 8
 
-    x = torch.randn(B, N, C)
+    x = torch.randn(B, N, C1)
     p = torch.randn(B, N, 3)
-    tr_down = TransitionDownModule(K, C)
-    out = tr_down(x, p, N2)
-    assert out.shape == (B, N2, C)
-    x2 = torch.randn(B, N2, C)
-    run_training_step(tr_down, out, x2)
+    tr_down = TransitionDownModule(K, C1, C2)
+    xout, pout = tr_down(x, p, N2)
+    assert xout.shape == (B, N2, C2)
+    assert pout.shape == (B, N2, 3)
+    x2 = torch.randn(B, N2, C2)
+    run_training_step(tr_down, xout, x2)
 
 
 def test_transition_up_module():
@@ -71,12 +72,29 @@ def test_transition_up_module():
 
     x = torch.randn(B, N2, C)
     p = torch.randn(B, N2, 3)
-    tr_up = TransitionUpModule(K, C)
+    tr_up = TransitionUpModule(K, din=C, dout=C)
     factor = 2
-    out = tr_up(x, p, factor)
-    assert out.shape == (B, N, C)
+    xout, pout = tr_up(x, p, factor)
+    assert xout.shape == (B, N, C)
+    assert pout.shape == (B, N, 3)
     x2 = torch.randn(B, N, C)
-    run_training_step(tr_up, out, x2)
+    run_training_step(tr_up, xout, x2)
+
+
+def test_point_transformer_semantic_segmentation():
+    B = 2
+    N = 2048
+    C = 4
+    K = 8
+    n_classes = 24
+
+    x = torch.randn(B, N, C)
+    p = torch.randn(B, N, 3)
+    pt_semseg = PointTransformerSemanticSegmentation(d_in=C, d=32, k=K, n_classes=n_classes)
+    out = pt_semseg(x, p)
+    assert out.shape == (B, N, n_classes)
+    x2 = torch.randn(B, N, n_classes)
+    run_training_step(pt_semseg, out, x2)
 
 
 def run_training_step(model, preds, y):
@@ -91,5 +109,5 @@ def run_training_step(model, preds, y):
 
 
 if __name__ == "__main__":
-    test_transition_up_module()
+    test_point_transformer_semantic_segmentation()
     print("All tests passed!")
