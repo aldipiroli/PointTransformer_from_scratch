@@ -13,19 +13,19 @@ class Trainer(TrainerBase):
         start_epoch = self.epoch
         for epoch in range(start_epoch, self.config["OPTIM"]["num_epochs"]):
             self.epoch = epoch
-            self.train_one_epoch()
             self.evaluate_model()
+            self.train_one_epoch()
             if epoch % self.config["OPTIM"]["save_ckpt_every"] == 0:
                 self.save_checkpoint()
 
     def train_one_epoch(self):
         self.model.train()
         pbar = tqdm(enumerate(self.train_loader), total=len(self.train_loader))
-        for n_iter, (img, labels) in pbar:
-            img = img.to(self.device)
+        for n_iter, (pcl, labels) in pbar:
+            pcl = pcl.to(self.device)
             labels = labels.to(self.device)
 
-            preds = self.model(img)
+            preds = self.model(pcl, pcl)
             loss, loss_dict = self.loss_fn(preds, labels)
             self.write_dict_to_tb(loss_dict, self.total_iters_train, prefix="train")
 
@@ -48,11 +48,13 @@ class Trainer(TrainerBase):
         self.model.eval()
         pbar = tqdm(enumerate(self.val_loader), total=len(self.val_loader))
         val_loss = []
-        for n_iter, (img, labels) in pbar:
-            img = img.to(self.device)
+        for n_iter, (pcl, labels) in pbar:
+            if n_iter > self.config["OPTIM"]["max_eval_iters"]:
+                break
+            pcl = pcl.to(self.device)
             labels = labels.to(self.device)
 
-            preds = self.model(img)
+            preds = self.model(pcl, pcl)
             loss, loss_dict = self.loss_fn(preds, labels)
             val_loss.append(loss)
             self.write_dict_to_tb(loss_dict, self.total_iters_val, prefix="val")
@@ -64,5 +66,10 @@ class Trainer(TrainerBase):
                     "loss": loss.item(),
                 }
             )
-        self.write_float_to_tb(torch.mean(loss).item(), name="val/avg_loss", step=self.epoch)
+        self.write_float_to_tb(torch.mean(torch.tensor(val_loss)).item(), name="val/avg_loss", step=self.epoch)
         pbar.close()
+
+    def post_processor(self, out):
+        out = torch.softmax(out, -1)
+        pred_out = torch.argmax(out, -1)
+        return pred_out

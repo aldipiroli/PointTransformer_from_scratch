@@ -99,9 +99,13 @@ class TransitionUpModule(nn.Module):
 
 
 class PointTransformerSemanticSegmentation(nn.Module):
-    def __init__(self, d_in, d, k, n_classes):
+    def __init__(self, cfg):
         super().__init__()
-        self.k = k
+        d_in = cfg["MODEL"]["d_in"]
+        d = cfg["MODEL"]["d"]
+        k = cfg["MODEL"]["k"]
+        n_classes = cfg["MODEL"]["n_classes"]
+        self.k = cfg["MODEL"]["k"]
 
         # Input
         self.linear_in = nn.Linear(d_in, d)
@@ -183,9 +187,13 @@ class PointTransformerSemanticSegmentation(nn.Module):
 
 
 class PointTransformerClassification(nn.Module):
-    def __init__(self, d_in, d, k, n_classes):
+    def __init__(self, cfg):
         super().__init__()
-        self.k = k
+        d_in = cfg["MODEL"]["d_in"]
+        d = cfg["MODEL"]["d"]
+        k = cfg["MODEL"]["k"]
+        n_classes = cfg["MODEL"]["n_classes"]
+        self.k = cfg["MODEL"]["k"]
 
         # Input
         self.linear_in = nn.Linear(d_in, d)

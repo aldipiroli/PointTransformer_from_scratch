@@ -1,17 +1,21 @@
 ARTIFACTS_DIR: "artifacts"
 MODEL:
-  MODEL_CONFIG: 1
+  d_in: 3
+  d: 32
+  k: 8
+  n_classes: 6
+  type: segmentation
 DATA:
-  root_dir: "data/"
-  img_size: [512, 512]
+  root_dir: "data/Shapenetcore_benchmark"
   batch_size: 8
+  n_points: 2048
 OPTIM:
   optimizer: "Adam"
   lr: 0.001
   accumulate_gradient: False
   accumulate_gradient_iters: 8
   num_epochs: 100
-  max_eval_iters: 50
+  max_eval_iters: 200
   save_ckpt_every: 1
   eval_every: 1
   gradient_clip: False

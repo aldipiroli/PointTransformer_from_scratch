@@ -1,0 +1,24 @@
+ARTIFACTS_DIR: "artifacts"
+MODEL:
+  d_in: 3
+  d: 32
+  k: 8
+  n_classes: 16
+  type: classification
+DATA:
+  root_dir: "data/Shapenetcore_benchmark"
+  batch_size: 8
+  n_points: 2048
+OPTIM:
+  optimizer: "Adam"
+  lr: 0.001
+  accumulate_gradient: False
+  accumulate_gradient_iters: 8
+  num_epochs: 100
+  max_eval_iters: 200
+  save_ckpt_every: 1
+  eval_every: 1
+  gradient_clip: False
+  scheduler: ""
+  T_max: 100
+  eta_min: 0.000001

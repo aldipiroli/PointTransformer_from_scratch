@@ -91,7 +91,9 @@ def test_point_transformer_semantic_segmentation():
 
     x = torch.randn(B, N, C)
     p = torch.randn(B, N, 3)
-    pt_semseg = PointTransformerSemanticSegmentation(d_in=C, d=32, k=K, n_classes=n_classes)
+
+    cfg = {"MODEL": {"d_in": C, "d": 32, "k": K, "n_classes": n_classes}}
+    pt_semseg = PointTransformerSemanticSegmentation(cfg)
     out = pt_semseg(x, p)
     assert out.shape == (B, N, n_classes)
     x2 = torch.randn(B, N, n_classes)
@@ -107,7 +109,8 @@ def test_point_transformer_classification():
 
     x = torch.randn(B, N, C)
     p = torch.randn(B, N, 3)
-    pt_cls = PointTransformerClassification(d_in=C, d=32, k=K, n_classes=n_classes)
+    cfg = {"MODEL": {"d_in": C, "d": 32, "k": K, "n_classes": n_classes}}
+    pt_cls = PointTransformerClassification(cfg)
     out = pt_cls(x, p)
     assert out.shape == (B, n_classes)
     x2 = torch.randn(B, n_classes)
