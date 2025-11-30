@@ -22,8 +22,8 @@ class Trainer(TrainerBase):
         start_epoch = self.epoch
         for epoch in range(start_epoch, self.config["OPTIM"]["num_epochs"]):
             self.epoch = epoch
-            self.evaluate_model()
             self.train_one_epoch()
+            self.evaluate_model()
             if epoch % self.config["OPTIM"]["save_ckpt_every"] == 0:
                 self.save_checkpoint()
 

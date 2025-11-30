@@ -165,20 +165,20 @@ class PointTransformerSemanticSegmentation(nn.Module):
         xmid = self.linear_mid(xdown4)
 
         # Up Path
-        xup4, pup4 = self.tr_up4(xmid, pdown4, factor=6)
-        xup4 += xdown3
+        xup4, pup4 = self.tr_up4(xmid, pdown4, factor=4)
+        xup4 = xup4 + xdown3
         xup4 = self.pt_up4(xup4, pup4)
 
-        xup3, pup3 = self.tr_up3(xup4, pup4, factor=6)
-        xup3 += xdown2
+        xup3, pup3 = self.tr_up3(xup4, pup4, factor=4)
+        xup3 = xup3 + xdown2
         xup3 = self.pt_up3(xup3, pup3)
 
-        xup2, pup2 = self.tr_up2(xup3, pup3, factor=6)
-        xup2 += xdown1
+        xup2, pup2 = self.tr_up2(xup3, pup3, factor=4)
+        xup2 = xup2 + xdown1
         xup2 = self.pt_up2(xup2, pup2)
 
-        xup1, pup1 = self.tr_up1(xup2, pup2, factor=6)
-        xup1 += xin
+        xup1, pup1 = self.tr_up1(xup2, pup2, factor=4)
+        xup1 = xup1 + xin
         xup1 = self.pt_up1(xup1, pup1)
 
         # Segm Head
