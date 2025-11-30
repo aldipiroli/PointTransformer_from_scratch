@@ -4,6 +4,7 @@ from pathlib import Path
 
 import numpy as np
 import torchvision.transforms as transforms
+from scipy.spatial.transform import Rotation as R
 from torch.utils.data import Dataset
 
 
@@ -78,10 +79,31 @@ class ShapeNetDataset(Dataset):
         samples = np.random.choice(pcl.shape[0], size=n_points, replace=True)
         return pcl[samples], segm[samples]
 
+    def center_and_normalize(self, points):
+        mean = points.mean(axis=0)
+        centered = points - mean
+
+        max_dist = np.linalg.norm(centered, axis=1).max()
+        normalized = centered / max_dist
+        return normalized
+
+    def random_rotation(self, points):
+        rot = R.random()
+        R_matrix = rot.as_matrix()
+        points_rot = points @ R_matrix.T
+        return points_rot
+
+    def apply_augmentations(self, points):
+        points = self.random_rotation(points)
+        return points
+
     def __getitem__(self, idx):
         class_id, class_name, pcl_path, segm_path = self.files[idx]
         pcl_raw = self.load_pcl(pcl_path)
         segm_raw = self.load_segm(segm_path)
         pcl, segm = self.sample_points(pcl_raw, segm_raw)
+        pcl = self.center_and_normalize(pcl)
+        if self.mode == "train":
+            pcl = self.apply_augmentations(pcl)
         labels = class_id if self.cfg["MODEL"]["type"] == "classification" else segm
-        return pcl, labels
+        return pcl.astype(np.float32), labels
