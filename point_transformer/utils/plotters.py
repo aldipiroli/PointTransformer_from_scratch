@@ -51,7 +51,7 @@ def plot_semseg_preds(
         points = np.asarray(points).squeeze()
         labels = np.asarray(labels).squeeze()
         points = points[:, [0, 2, 1]]
-        points_offset = points + np.array([0, offset, 0])
+        points_offset = points + np.array([0, 0, offset])
 
         pdata = pv.PolyData(points_offset)
         pdata["labels"] = labels
