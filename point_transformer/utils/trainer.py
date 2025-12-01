@@ -3,7 +3,7 @@ from torchmetrics import Accuracy, JaccardIndex
 from tqdm import tqdm
 
 from point_transformer.dataset.shapenet_dataset import ID_TO_CLASS
-from point_transformer.utils.plotters import plot_point_clouds
+from point_transformer.utils.plotters import plot_cls_preds, plot_semseg_preds
 from point_transformer.utils.trainer_base import TrainerBase
 
 
@@ -22,8 +22,8 @@ class Trainer(TrainerBase):
         start_epoch = self.epoch
         for epoch in range(start_epoch, self.config["OPTIM"]["num_epochs"]):
             self.epoch = epoch
-            self.train_one_epoch()
             self.evaluate_model()
+            self.train_one_epoch()
             if epoch % self.config["OPTIM"]["save_ckpt_every"] == 0:
                 self.save_checkpoint()
 
@@ -76,7 +76,10 @@ class Trainer(TrainerBase):
             self.total_iters_val += 1
 
             if n_iter < self.config["OPTIM"]["max_num_plots"]:
-                self.plot_preds(pcl, preds, labels, iter=n_iter)
+                if self.config["MODEL"]["type"] == "classification":
+                    self.plot_preds_cls(pcl, preds, labels, iter=n_iter)
+                else:
+                    self.plot_preds_segm(pcl, preds, labels, iter=n_iter)
 
             pbar.set_postfix(
                 {
@@ -121,11 +124,27 @@ class Trainer(TrainerBase):
         pred_out = torch.argmax(out, -1)
         return pred_out
 
-    def plot_preds(self, pcl, out, labels, iter=0, batch_id=0):
+    def plot_preds_cls(self, pcl, out, labels, iter=0, batch_id=0):
         preds = self.post_processor(out)
         if self.config["MODEL"]["type"] == "classification":
             title = f"{ID_TO_CLASS[preds[batch_id].item()]}/{ID_TO_CLASS[labels[batch_id].item()]} - {preds[batch_id].item() == labels[batch_id].item()}"
         else:
             title = None
-        img = plot_point_clouds([pcl], return_figure=True, title=title)
+        img = plot_cls_preds([pcl], return_figure=True, title=title)
         self.write_images_to_tb(img, self.epoch, f"img/{str(iter).zfill(4)}")
+
+    def plot_preds_segm(self, pcl, out, labels, iter=0, batch_id=0):
+        preds = self.post_processor(out)
+        img = plot_semseg_preds(
+            [pcl[batch_id], pcl[batch_id]], [labels[batch_id], preds[batch_id]], return_figure=False
+        )
+        self.write_images_to_tb(img, self.epoch, f"img/{str(iter).zfill(4)}")
+
+
+###########################################
+import debugpy
+
+debugpy.listen(("localhost", 6001))
+print("Waiting for debugger attach...")
+debugpy.wait_for_client()
+###########################################
