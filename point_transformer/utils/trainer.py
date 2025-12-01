@@ -22,8 +22,8 @@ class Trainer(TrainerBase):
         start_epoch = self.epoch
         for epoch in range(start_epoch, self.config["OPTIM"]["num_epochs"]):
             self.epoch = epoch
-            self.evaluate_model()
             self.train_one_epoch()
+            self.evaluate_model()
             if epoch % self.config["OPTIM"]["save_ckpt_every"] == 0:
                 self.save_checkpoint()
 
@@ -135,16 +135,5 @@ class Trainer(TrainerBase):
 
     def plot_preds_segm(self, pcl, out, labels, iter=0, batch_id=0):
         preds = self.post_processor(out)
-        img = plot_semseg_preds(
-            [pcl[batch_id], pcl[batch_id]], [labels[batch_id], preds[batch_id]], return_figure=False
-        )
+        img = plot_semseg_preds([pcl[batch_id], pcl[batch_id]], [labels[batch_id], preds[batch_id]], return_figure=True)
         self.write_images_to_tb(img, self.epoch, f"img/{str(iter).zfill(4)}")
-
-
-###########################################
-import debugpy
-
-debugpy.listen(("localhost", 6001))
-print("Waiting for debugger attach...")
-debugpy.wait_for_client()
-###########################################

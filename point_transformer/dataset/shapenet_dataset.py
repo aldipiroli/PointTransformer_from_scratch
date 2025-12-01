@@ -35,6 +35,25 @@ ID_TO_CLASS = {
     15: "Table",
 }
 
+CLASSES_TO_SEG = {
+    "Airplane": [0, 1, 2, 3],
+    "Bag": [4, 5],
+    "Cap": [6, 7],
+    "Car": [8, 9, 10, 11],
+    "Chair": [12, 13, 14, 15],
+    "Earphone": [16, 17, 18],
+    "Guitar": [19, 20, 21],
+    "Knife": [22, 23],
+    "Lamp": [24, 25, 26, 27],
+    "Laptop": [28, 29],
+    "Motorbike": [30, 31, 32, 33, 34, 35],
+    "Mug": [36, 37],
+    "Pistol": [38, 39, 40],
+    "Rocket": [41, 42, 43],
+    "Skateboard": [44, 45, 46],
+    "Table": [47, 48, 49],
+}
+
 
 class ShapeNetDataset(Dataset):
     def __init__(self, cfg, mode, logger):
@@ -67,11 +86,13 @@ class ShapeNetDataset(Dataset):
         pcl = np.load(pcl_path)
         return pcl
 
-    def load_segm(self, path):
+    def load_segm(self, class_name, path):
         segm_path = self.root_dir / Path(path)
         assert os.path.isfile(segm_path)
         segm = np.loadtxt(segm_path, dtype=int)
-        segm = segm - 1  # start from 0
+        segm = segm.astype(int) - 1
+        global_ids = CLASSES_TO_SEG[class_name]
+        segm = np.array([global_ids[l] for l in segm], dtype=int)
         return segm
 
     def sample_points(self, pcl, segm):
@@ -101,7 +122,7 @@ class ShapeNetDataset(Dataset):
     def __getitem__(self, idx):
         class_id, class_name, pcl_path, segm_path = self.files[idx]
         pcl_raw = self.load_pcl(pcl_path)
-        segm_raw = self.load_segm(segm_path)
+        segm_raw = self.load_segm(class_name, segm_path)
         pcl, segm = self.sample_points(pcl_raw, segm_raw)
         pcl = self.center_and_normalize(pcl)
         if self.mode == "train":
