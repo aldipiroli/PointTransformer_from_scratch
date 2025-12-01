@@ -72,10 +72,11 @@ def test_transition_up_module():
     K = 8
 
     x = torch.randn(B, N2, C)
-    p = torch.randn(B, N2, 3)
+    psparse = torch.randn(B, N2, 3)
+    pdense = torch.randn(B, N, 3)
     tr_up = TransitionUpModule(K, din=C, dout=C)
     factor = 2
-    xout, pout = tr_up(x, p, factor)
+    xout, pout = tr_up(x, psparse, pdense)
     assert xout.shape == (B, N, C)
     assert pout.shape == (B, N, 3)
     x2 = torch.randn(B, N, C)

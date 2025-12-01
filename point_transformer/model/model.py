@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from point_transformer.utils.operations import feature_interpolation, find_kNN, sample_down
+from point_transformer.utils.operations import find_kNN, sample_down
 
 
 class ProjectionBlock(nn.Module):
@@ -89,13 +89,22 @@ class TransitionUpModule(nn.Module):
         self.dout = dout
         self.projection = nn.Sequential(nn.Linear(din, dout), nn.BatchNorm1d(dout), nn.ReLU(), nn.Linear(dout, dout))
 
-    def forward(self, x, p, factor):
-        B, N2, C = x.shape
-        x = self.projection(x.reshape(B * N2, C))
-        x = x.reshape(B, N2, self.dout)
-        x2 = feature_interpolation(x, factor)
-        p2 = feature_interpolation(p, factor)
-        return x2, p2
+    def forward(self, x, p_sparse, p_dense):
+        B, N_sparse, C = x.shape
+        x = self.projection(x.reshape(B * N_sparse, C))
+        x = x.reshape(B, N_sparse, self.dout)
+
+        dists, idx = find_kNN(p_dense, p_sparse, k=3)
+
+        # Inverse Distance Weights
+        dist_recip = 1.0 / (dists + 1e-8)
+        norm = torch.sum(dist_recip, dim=2, keepdim=True)
+        weights = dist_recip / norm
+
+        batch_ids = torch.arange(B, device=x.device)[:, None, None]
+        neighbor_features = x[batch_ids, idx]
+        x_interpolated = torch.sum(neighbor_features * weights.unsqueeze(-1), dim=2)
+        return x_interpolated, p_dense
 
 
 class PointTransformerSemanticSegmentation(nn.Module):
@@ -165,21 +174,21 @@ class PointTransformerSemanticSegmentation(nn.Module):
         xmid = self.linear_mid(xdown4)
 
         # Up Path
-        xup4, pup4 = self.tr_up4(xmid, pdown4, factor=4)
+        xup4, _ = self.tr_up4(xmid, p_sparse=pdown4, p_dense=pdown3)
         xup4 = xup4 + xdown3
-        xup4 = self.pt_up4(xup4, pup4)
+        xup4 = self.pt_up4(xup4, pdown3)
 
-        xup3, pup3 = self.tr_up3(xup4, pup4, factor=4)
+        xup3, _ = self.tr_up3(xup4, p_sparse=pdown3, p_dense=pdown2)
         xup3 = xup3 + xdown2
-        xup3 = self.pt_up3(xup3, pup3)
+        xup3 = self.pt_up3(xup3, pdown2)
 
-        xup2, pup2 = self.tr_up2(xup3, pup3, factor=4)
+        xup2, _ = self.tr_up2(xup3, p_sparse=pdown2, p_dense=pdown1)
         xup2 = xup2 + xdown1
-        xup2 = self.pt_up2(xup2, pup2)
+        xup2 = self.pt_up2(xup2, pdown1)
 
-        xup1, pup1 = self.tr_up1(xup2, pup2, factor=4)
+        xup1, _ = self.tr_up1(xup2, p_sparse=pdown1, p_dense=p)
         xup1 = xup1 + xin
-        xup1 = self.pt_up1(xup1, pup1)
+        xup1 = self.pt_up1(xup1, p)
 
         # Segm Head
         out = self.linear_cls(xup1)
