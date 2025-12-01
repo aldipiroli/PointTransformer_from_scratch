@@ -2,6 +2,8 @@ import numpy as np
 import pyvista as pv
 import torch
 
+from point_transformer.utils.colors import SHAPENET_PART_COLORS
+
 
 def plot_cls_preds(point_clouds, output_path="tmp.png", point_size=10, return_figure=False, title=""):
     plotter = pv.Plotter(off_screen=True)
@@ -40,7 +42,7 @@ def plot_semseg_preds(
     return_figure=False,
 ):
     plotter = pv.Plotter(off_screen=True)
-
+    COLOR_MAP = (SHAPENET_PART_COLORS * 255).astype(np.uint8)
     offset = 0
     for i, (points, labels) in enumerate(zip(point_clouds, labels_list)):
         if isinstance(points, torch.Tensor):
@@ -49,21 +51,22 @@ def plot_semseg_preds(
             labels = labels.detach().cpu().numpy()
 
         points = np.asarray(points).squeeze()
-        labels = np.asarray(labels).squeeze()
+        labels = np.asarray(labels).astype(int).squeeze()
         points = points[:, [0, 2, 1]]
         points_offset = points + np.array([0, 0, offset])
 
+        label_colors = COLOR_MAP[labels]
         pdata = pv.PolyData(points_offset)
-        pdata["labels"] = labels
+        pdata["colors"] = label_colors
+
         plotter.add_points(
             pdata,
-            scalars="labels",
+            scalars="colors",
+            rgb=True,
             render_points_as_spheres=True,
             point_size=point_size,
-            cmap="tab10",
         )
-        offset += points[:, 0].max() - points[:, 0].min() + 1
-
+        offset += points[:, 0].max() - points[:, 0].min() + 5
     plotter.set_background("white")
     if return_figure:
         img = plotter.screenshot(return_img=True)
