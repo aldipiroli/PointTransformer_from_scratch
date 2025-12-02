@@ -17,6 +17,6 @@ python train.py point_transformer/config/config_cls.yaml
 
 ![](assets/output_part_semseg.gif)
 
-> Classification results on the ShapeNet Core validation set after ~30 epochs.
+> Classification results on the ShapeNet Core validation set after ~30 epochs. Format: Prediction/Ground Truth.
 
 ![](assets/output_cls.gif)
