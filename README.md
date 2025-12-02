@@ -13,7 +13,7 @@ python train.py point_transformer/config/config_cls.yaml
 ``` 
 
 ### Results
->Part Semantic Segmentation results on the ShapeNet Core validation set after ~20 epochs.
+>Part Semantic Segmentation results on the ShapeNet Core validation set after ~20 epochs. Top: Predictions, Bottom: Ground Truth.
 
 ![](assets/output_part_semseg.gif)
 
