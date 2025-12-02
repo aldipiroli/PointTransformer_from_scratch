@@ -8,8 +8,13 @@ pip install -r requirements.txt
 ``` 
 
 ### Training and Evaluation
+Classification:
 ``` 
 python train.py point_transformer/config/config_cls.yaml
+``` 
+Segmentation:
+``` 
+python train.py point_transformer/config/config_segm.yaml
 ``` 
 
 ### Results
